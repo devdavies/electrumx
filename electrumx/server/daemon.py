@@ -43,10 +43,11 @@ class Daemon(object):
     WARMING_UP = -28
     id_counter = itertools.count()
 
-    def __init__(self, coin, url, max_workqueue=10, init_retry=0.25,
-                 max_retry=4.0):
+    def __init__(self, coin, url, max_workqueue=10, init_retry=0.25, max_retry=4.0):
         self.coin = coin
         self.logger = class_logger(__name__, self.__class__.__name__)
+        self.url_index = None
+        self.urls = []
         self.set_url(url)
         # Limit concurrent RPC calls to this number.
         # See DEFAULT_HTTP_WORKQUEUE in bitcoind, which is typically 16
@@ -288,6 +289,10 @@ class DashDaemon(Daemon):
         '''Return the masternode status.'''
         return await self._send_single('masternodelist', params)
 
+    async def protx(self, params):
+        '''Set of commands to execute ProTx related actions.'''
+        return await self._send_single('protx', params)
+
 
 class FakeEstimateFeeDaemon(Daemon):
     '''Daemon that simulates estimatefee and relayfee RPC calls. Coin that
@@ -445,3 +450,47 @@ class DecredDaemon(Daemon):
         # FIXME allow self signed certificates
         connector = aiohttp.TCPConnector(verify_ssl=False)
         return aiohttp.ClientSession(connector=connector)
+
+
+class PreLegacyRPCDaemon(LegacyRPCDaemon):
+    '''Handles connections to a daemon at the given URL.
+
+    This class is useful for daemons that don't have the new 'getblock'
+    RPC call that returns the block in hex, and need the False parameter
+    for the getblock'''
+
+    async def deserialised_block(self, hex_hash):
+        '''Return the deserialised block with the given hex hash.'''
+        return await self._send_single('getblock', (hex_hash, False))
+
+
+class SmartCashDaemon(Daemon):
+
+    async def masternode_broadcast(self, params):
+        '''Broadcast a smartnode to the network.'''
+        return await self._send_single('smartnodebroadcast', params)
+
+    async def masternode_list(self, params):
+        '''Return the smartnode status.'''
+        return await self._send_single('smartnodelist', params)
+
+    async def smartrewards(self, params):
+        '''Return smartrewards data.'''
+        return await self._send_single('smartrewards', params)
+
+
+class ZcoinMtpDaemon(Daemon):
+
+    def strip_mtp_data(self, raw_block):
+        if self.coin.is_mtp(raw_block):
+            return \
+                raw_block[:self.coin.MTP_HEADER_DATA_START*2] + \
+                raw_block[self.coin.MTP_HEADER_DATA_END*2:]
+        return raw_block
+
+    async def raw_blocks(self, hex_hashes):
+        '''Return the raw binary blocks with the given hex hashes.'''
+        params_iterable = ((h, False) for h in hex_hashes)
+        blocks = await self._send_vector('getblock', params_iterable)
+        # Convert hex string to bytes
+        return [hex_to_bytes(self.strip_mtp_data(block)) for block in blocks]

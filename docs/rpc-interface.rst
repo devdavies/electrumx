@@ -84,6 +84,7 @@ A typical result is as follows (with annotated comments)::
     "pid": 85861,                  # Server's process ID
     "requests": 0,                 # Unprocessed requests across all sessions
     "sessions": 43,                # Total number of sessions
+    "sessions_with_subs": 4,       # Number of sessions with history subscriptions
     "subs": 84,                    # Script hash subscriptions across all sessions
     "txs_sent": 4,                 # Transactions sent since server started
     "uptime": "06h 48m 00s"        # Time since server started
@@ -106,13 +107,10 @@ Apart from very short intervals, typically after a new block or when
 a client has just connected, the number of unprocessed requests
 should normally be zero.
 
-Sessions are put into groups, primarily as an anti-DoS measure.
-Initially all connections made within a period of time are put in the
-same group.  High bandwidth usage by a member of a group deprioritizes
-that session, and all members of its group to a lesser extent.
-Low-priority sessions have their requests served after higher priority
-sessions.  ElectrumX will start delaying responses to a session if it
-becomes sufficiently deprioritized.
+Sessions are put into groups, primarily as an anti-DoS measure.  Currently each session
+goes into two groups: one for an IP subnet, and one based on the timeslice it connected
+in.  Each member of a group incurs a fraction of the costs of the other group members.
+This appears in the `sessions_` list under the column XCost.
 
 groups
 ------
@@ -141,6 +139,17 @@ in the logs or with the `sessions`_ RPC command::
 The return value shows this command turned off logging for sesssions
 0, 1 and 2.  It was turned on for sessions 3 and 4, and there was no
 session 5.
+
+lognew
+------
+
+Toggle logging of the new sessions.  Their requests are written to the
+server log::
+
+  $ electrumx_rpc lognew
+  "lognew: True"
+
+The return value shows that new session logging is now on.
 
 .. _peers:
 
@@ -205,22 +214,19 @@ sessions
 
 Return a list of all current sessions.  Takes no arguments::
 
-  ID     Flags            Client Proto  Reqs   Txs    Subs    Recv Recv KB    Sent Sent KB      Time                Peer
-  110    S1                2.9.4  0.10     0     0       0     403      28     442      37 06h41m41s  xxx.xxx.xxx.xxx:xx
-  282    S1                3.1.5   1.1     0     0       0     380      25     417      40 06h21m38s  xxx.xxx.xxx.xxx:xx
-  300    S1                2.9.4  0.10     0     0       0     381      25     418      34 06h19m35s  xxx.xxx.xxx.xxx:xx
-  [...]
-  3313   S1                2.9.3  0.10     0     0       0      22       1      22       6       07s  xxx.xxx.xxx.xxx:xx
-  4      R0                  RPC   RPC     0     0       0       1       0       0       0       00s         [::1]:62479
+  ID     Flags            Client Proto    Cost   XCost  Reqs   Txs    Subs    Recv Recv KB    Sent Sent KB      Time                  Peer
+  1      S6                1.1.1   1.4       0      16     0     0       0       3       0       3       0    05m42s 165.255.191.213:22349
+  2      S6       all_seeing_eye   1.4       0      16     0     0       0       2       0       2       0    05m40s   67.170.52.226:24995
+  4      S6                3.3.2   1.4       0      16     0     0      34      45       5      45       3    05m40s 185.220.100.252:40463
+  3      S6                1.1.2   1.4       0      16     0     0       0       3       0       3       0    05m40s    89.17.142.28:59241
 
-The columns show information by session: the session ID, flags (see
-below), how the client identifies itself - typically the Electrum
-client version, the protocol version negotiated, the number of
-unprocessed requests, the number of transactions sent, the number of
-address subscriptions, the number of requests received and their total
-size, the number of messages sent and their size, how long the client
-has been connected, and the client's IP address (if anonymous logging
-is disabled).
+The columns show information by session: the session ID, flags (see below), how the client
+identifies itself - typically the Electrum client version, the protocol version
+negotiated, the session cost, the additional session cost accrued from its groups, the
+number of unprocessed requests, the number of transactions sent, the number of address
+subscriptions, the number of requests received and their total size, the number of
+messages sent and their size, how long the client has been connected, and the client's IP
+address (if anonymous logging is disabled).
 
 The flags are:
 

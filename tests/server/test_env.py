@@ -16,7 +16,7 @@ BASE_DB_DIR = '/some/dir'
 base_environ = {
     'DB_DIRECTORY': BASE_DB_DIR,
     'DAEMON_URL': BASE_DAEMON_URL,
-    'COIN': 'BitcoinCash',
+    'COIN': 'BitcoinSV',
 }
 
 
@@ -88,13 +88,13 @@ def test_COIN_NET():
     '''Test COIN and NET defaults and redirection.'''
     setup_base_env()
     e = Env()
-    assert e.coin == lib_coins.BitcoinCash
+    assert e.coin == lib_coins.BitcoinSV
     os.environ['NET'] = 'testnet'
     e = Env()
-    assert e.coin == lib_coins.BitcoinCashTestnet
+    assert e.coin == lib_coins.BitcoinSVTestnet
     os.environ['NET'] = ' testnet '
     e = Env()
-    assert e.coin == lib_coins.BitcoinCashTestnet
+    assert e.coin == lib_coins.BitcoinSVTestnet
     os.environ.pop('NET')
     os.environ['COIN'] = ' Litecoin '
     e = Env()
@@ -169,7 +169,7 @@ def test_RPC_HOST():
 
 def test_REORG_LIMIT():
     assert_integer('REORG_LIMIT', 'reorg_limit',
-                   lib_coins.BitcoinCash.REORG_LIMIT)
+                   lib_coins.BitcoinSV.REORG_LIMIT)
 
 
 def test_TCP_PORT():
@@ -196,12 +196,24 @@ def test_RPC_PORT():
     assert_integer('RPC_PORT', 'rpc_port', 8000)
 
 
-def test_MAX_SUBSCRIPTIONS():
-    assert_integer('MAX_SUBSCRIPTIONS', 'max_subscriptions', 10000)
+def test_COST_HARD_LIMIT():
+    assert_integer('COST_HARD_LIMIT', 'cost_hard_limit', 10000)
 
 
-def test_LOG_SESSIONS():
-    assert_integer('LOG_SESSIONS', 'log_sessions', 3600)
+def test_COST_SOFT_LIMIT():
+    assert_integer('COST_SOFT_LIMIT', 'cost_soft_limit', 1000)
+
+
+def test_INITIAL_CONCURRENT():
+    assert_integer('INITIAL_CONCURRENT', 'initial_concurrent', 10)
+
+
+def test_REQUEST_SLEEP():
+    assert_integer('REQUEST_SLEEP', 'request_sleep', 2500)
+
+
+def test_BANDWIDTH_UNIT_COST():
+    assert_integer('BANDWIDTH_UNIT_COST', 'bw_unit_cost', 5000)
 
 
 def test_DONATION_ADDRESS():
@@ -216,10 +228,6 @@ def test_MAX_SEND():
     assert_integer('MAX_SEND', 'max_send', 1000000)
 
 
-def test_MAX_SUBS():
-    assert_integer('MAX_SUBS', 'max_subs', 250000)
-
-
 def test_MAX_SESSIONS():
     too_big = 1000000
     os.environ['MAX_SESSIONS'] = str(too_big)
@@ -228,12 +236,8 @@ def test_MAX_SESSIONS():
     # Cannot test default as it may be lowered by the open file limit cap
 
 
-def test_MAX_SESSION_SUBS():
-    assert_integer('MAX_SESSION_SUBS', 'max_session_subs', 50000)
-
-
-def test_BANDWIDTH_LIMIT():
-    assert_integer('BANDWIDTH_LIMIT', 'bandwidth_limit', 2000000)
+def test_REQUEST_TIMEOUT():
+    assert_integer('REQUEST_TIMEOUT', 'request_timeout', 15)
 
 
 def test_SESSION_TIMEOUT():
@@ -407,7 +411,7 @@ def test_tor_identity():
 def test_ban_versions():
     e = Env()
     assert e.drop_client is None
-    ban_re = '1\.[0-2]\.\d+?[_\w]*'
+    ban_re = r'1\.[0-2]\.\d+?[_\w]*'
     os.environ['DROP_CLIENT'] = ban_re
     e = Env()
     assert e.drop_client == re.compile(ban_re)
@@ -416,5 +420,5 @@ def test_ban_versions():
 
 
 def test_coin_class_provided():
-    e = Env(lib_coins.BitcoinCash)
-    assert e.coin == lib_coins.BitcoinCash
+    e = Env(lib_coins.BitcoinSV)
+    assert e.coin == lib_coins.BitcoinSV
